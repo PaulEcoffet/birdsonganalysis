@@ -1,2 +1,2 @@
 from yin_pitch import pitch
-from songanalisys import wiener_entropy, song_similarity
+from songanalysis import wiener_entropy, song_similarity

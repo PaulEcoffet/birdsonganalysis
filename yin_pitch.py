@@ -28,12 +28,15 @@ def cumulative_mean_normalized_diff(yin):
 
 def absolute_threshold(yin, threshold):
     found = False
-    for tau in range(2, len(yin)):
+    tau = 2
+    while not found and tau < len(yin):
         if (yin[tau] < threshold):
+            print(tau)
             found = True
             while yin[tau + 1] < yin[tau]:
                 tau += 1
-            break
+        else:
+            tau += 1
     if found:
         return tau
     else:
