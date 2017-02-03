@@ -31,7 +31,6 @@ def absolute_threshold(yin, threshold):
     tau = 2
     while not found and tau < len(yin):
         if (yin[tau] < threshold):
-            print(tau)
             found = True
             while yin[tau + 1] < yin[tau]:
                 tau += 1
