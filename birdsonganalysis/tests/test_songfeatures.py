@@ -21,20 +21,20 @@ class FeaturesTest(unittest.TestCase):
             entropy2 = sf.wiener_entropy(sf.get_power(noise))
             self.assertGreater(entropy2, entropy)
 
-    def test_frequence_modulation_perfect(self):
+    def test_frequency_modulation_perfect(self):
         """
-        Test if frequence modulation is 0 for pure tone
+        Test if frequency modulation is 0 for pure tone
         """
         for goal in [440, 220]:
             signal = np.sin(np.linspace(0, 2048/44100, 2048) * 2 * np.pi * goal)
-            fm = sf.frequence_modulation(signal)
+            fm = sf.frequency_modulation(signal)
             self.assertAlmostEqual(fm, 0, places=1)
 
-    def test_frequence_modulation_fast(self):
+    def test_frequency_modulation_fast(self):
         """
-        Test if frequence modulation is not 0 for accelerating frequence
+        Test if frequency modulation is not 0 for accelerating fryquence
         """
         for goal in [440, 220]:
             signal = np.sin(np.linspace(0, 2048/44100, 2048)**2 * 2 * np.pi * goal)
-            fm = sf.frequence_modulation(signal)
+            fm = sf.frequency_modulation(signal)
             self.assertNotAlmostEqual(fm, 0, places=1)
