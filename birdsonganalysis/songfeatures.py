@@ -15,8 +15,12 @@ EPS = np.finfo(np.double).eps
 dir_path = os.path.dirname(os.path.realpath(__file__))
 params = json.load(open(os.path.join(dir_path, 'params.json')))
 
-def get_power(signal):
-    D = libtfr.mfft_dpss(len(signal), 1.5, 2, len(signal))
+def get_power(signal, n):
+    size = len(signal)
+    if size < n:
+        signal = np.concatenate((signal, np.zeros(n - len(signal))))
+    signal = signal[:n]
+    D = libtfr.mfft_dpss(size, 1.5, 2, size)
     P = D.mtpsd(signal)
     return P
 
@@ -132,7 +136,7 @@ def song_amplitude_modulation(song, freq_range=None, ov_params=None):
     for i in range(0, nb_windows-1):
         j = i * fft_step
         window = song[j:j+fft_size]
-        P = get_power(window)
+        P = get_power(window, p['FFT'])
         am[i] = amplitude_modulation(P, freq_range)
     return am
 
@@ -160,21 +164,30 @@ def song_pitch(song, sr, threshold=0.7, freq_range=None, ov_params=None):
     return pitches
 
 def song_wiener_entropy(song, freq_range=None, ov_params=None):
+    if freq_range is None:
+        freq_range=int(params['FFT']*params['Frequency_range']/2)
+    windows = get_windows(song)
+    wiener = np.zeros(windows.shape[0])
+    for i, window in enumerate(windows):
+        P = get_power(window, params['FFT'])
+        wiener[i] = wiener_entropy(P, freq_range)
+    return wiener
+
+def get_windows(song, ov_params=None):
     song = np.array(song, dtype=np.double)
-    song = song / (np.max(song) - np.min(song))
+    song = 2*song / (np.max(song) - np.min(song))
     p = copy.deepcopy(params)
     if ov_params is not None:
         p.update(ov_params)
-    if freq_range is None:
-        freq_range=int(params['FFT']*params['Frequency_range']/2)
-    fft_size = p['FFT_size']*2
+    fft_size = p['FFT_size']
     fft_step = p['FFT_step']
-    song = np.concatenate((np.zeros(fft_size), song, np.zeros(fft_size)))
-    nb_windows = int((len(song) - fft_size) // fft_step)
-    wiener = np.zeros((nb_windows, freq_range))
-    for i in range(0, nb_windows-1):
-        j = i * fft_step
-        window = song[j:j+fft_size]
-        P = get_power(window)
-        wiener[i] = wiener_entropy(P, freq_range)
-    return wiener
+    size = len(song)
+    padsize = fft_size
+    song = np.concatenate((np.zeros(padsize), song, np.zeros(padsize)))
+    wave_smp = range(fft_step//2, size, fft_step)
+    nb_windows = len(wave_smp)
+    windows = np.zeros((nb_windows, fft_size))
+    for i, smp in enumerate(wave_smp):
+        begin = smp - fft_size//2 + padsize
+        windows[i, :] = song[begin:begin+ fft_size]
+    return windows
