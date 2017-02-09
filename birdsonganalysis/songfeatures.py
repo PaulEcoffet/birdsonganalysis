@@ -43,8 +43,22 @@ def wiener_entropy(power, freq_range=None):
     logsum = np.log(np.sum(power[9:freq_range])/(freq_range - 10))
     return sumlog/(freq_range - 10) - logsum
 
-def frequency_modulation(window=None, freq_range=None):
+def amplitude_modulation(window, freq_range=None):
     """
+    window - The signal or the MTFFTs of the signal
+    """
+    if freq_range is None:
+        freq_range=int(params['FFT']*params['Frequency_range']/2)
+    if window.ndim == 1:
+        Z = get_mtfft(window)
+    else:
+        Z = window
+    td = time_der(Z, freq_range)
+    return np.sum(td)
+
+def frequency_modulation(window, freq_range=None):
+    """
+    window - The signal or the MTFFTs of the signal
     """
     if freq_range is None:
         freq_range=int(params['FFT']*params['Frequency_range']/2)
@@ -99,45 +113,24 @@ def song_frequency_modulation(song, freq_range=None, ov_params=None):
     return fm
 
 def song_amplitude(song, freq_range=None, ov_params=None):
-    song = np.array(song, dtype=np.double)
-    song = song / (np.max(song) - np.min(song))
-    p = copy.deepcopy(params)
-    if ov_params is not None:
-        p.update(ov_params)
-    if freq_range is None:
-        freq_range=int(params['FFT']*params['Frequency_range']/2)
-    fft_size = p['FFT_size']*2
-    fft_step = p['FFT_step']
-    song = np.concatenate((np.zeros(fft_size), song, np.zeros(fft_size)))
-    nb_windows = int((len(song) - fft_size) // fft_step)
-    am = np.zeros(nb_windows)
-    for i in range(0, nb_windows-1):
-        j = i * fft_step
-        window = song[j:j+fft_size]
+    windows = get_windows(song)
+    nb_windows = windows.shape[0]
+    amp = np.zeros(nb_windows)
+    for i, window in enumerate(windows):
         P = get_power(window)
-        am[i] = amplitude(P, freq_range)
-    return am
+        amp[i] = amplitude(P, freq_range)
+    return amp
 
 def song_pitch(song, sr, threshold=0.8, freq_range=None, ov_params=None):
-    song = np.array(song, dtype=np.float32)
-    song = song / (np.max(song) - np.min(song))
-    p = copy.deepcopy(params)
-    if ov_params is not None:
-        p.update(ov_params)
-    if freq_range is None:
-        freq_range=int(params['FFT']*params['Frequency_range']/2)
-    win_s = p['FFT_size']*4
-    step = p['FFT_step']
+    windows = get_windows(song)
+    nb_windows = windows.shape[0]
+    win_s = windows.shape[1]
     pitch_o = pitch("yin", 2048, win_s, sr)
     pitch_o.set_unit("freq")
     pitch_o.set_tolerance(threshold)
-    song = np.concatenate((np.zeros(win_s), song, np.zeros(win_s)))
-    nb_windows = int((len(song) - win_s) // step)
     pitches = np.zeros(nb_windows)
-    for i in range(0, nb_windows-1):
-        j = i * step
-        window = song[j:j+win_s].astype(np.float32)
-        pitches[i] = pitch_o(window)[0]
+    for i, window in enumerate(windows):
+        pitches[i] = pitch_o(window.astype(np.float32))[0]
     return pitches
 
 def song_wiener_entropy(song, freq_range=None, ov_params=None):
@@ -150,14 +143,42 @@ def song_wiener_entropy(song, freq_range=None, ov_params=None):
         wiener[i] = wiener_entropy(P, freq_range)
     return wiener
 
-def get_windows(song, ov_params=None):
+def song_amplitude_modulation(song, freq_range=None, ov_params=None):
+    if freq_range is None:
+        freq_range=int(params['FFT']*params['Frequency_range']/2)
+    windows = get_windows(song)
+    am = np.zeros(windows.shape[0])
+    for i, window in enumerate(windows):
+        am[i] = amplitude_modulation(window)
+    return am
+
+def all_song_features(song):
+    return {'fm': song_frequency_modulation(song),
+            'am': song_amplitude_modulation(song),
+            'amplitude': song_amplitude(song),
+            'entropy': song_wiener_entropy(song),
+            'pitch': song_pitch(song)}
+
+
+def get_windows(song, fft_step=40, fft_size=800):
+    """
+    Build the windows of the song for analysis. The windows are separeted by
+    `fft_step` and are of the size `fft_size`. The windows are centered on the
+    actual fft_step. Therefore, with default parameters, they go
+    song[-400:399] (centered on 0); song[-360:439] (centered on 40); etc.
+    out of range indices (including negative indices) are filled with zeros.
+    For example, the first window will be
+    ```
+    [0 0 0 ... 0 0 0 0.48 0.89 0.21 -0.4]
+     \  400 times  / ^- The first recording of the signal
+    ```
+    and the last window
+    ```
+     [0.54 0.12 -0.25 0 0 0 ... 0 0 0]
+    ```
+    """
     song = np.array(song, dtype=np.double)
     song = 2*song / (np.max(song) - np.min(song))
-    p = copy.deepcopy(params)
-    if ov_params is not None:
-        p.update(ov_params)
-    fft_size = p['FFT_size']*2
-    fft_step = p['FFT_step']
     size = len(song)
     padsize = fft_size
     song = np.concatenate((np.zeros(padsize), song, np.zeros(padsize)))
@@ -166,5 +187,5 @@ def get_windows(song, ov_params=None):
     windows = np.zeros((nb_windows, fft_size))
     for i, smp in enumerate(wave_smp):
         begin = smp - fft_size//2 + padsize
-        windows[i, :] = song[begin:begin+ fft_size]
+        windows[i, :] = song[begin:begin + fft_size]
     return windows
