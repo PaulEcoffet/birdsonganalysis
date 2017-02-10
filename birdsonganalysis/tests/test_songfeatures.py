@@ -1,8 +1,6 @@
 import numpy as np
 import unittest
 import birdsonganalysis.songfeatures as sf
-import libtfr
-from scipy.io import wavfile
 
 
 class FeaturesTest(unittest.TestCase):
