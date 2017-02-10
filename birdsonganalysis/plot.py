@@ -1,7 +1,7 @@
 """Plotting function for birdsonganalysis."""
 
-import seaborn as sns
 import numpy as np
+import seaborn as sns
 
 from .songfeatures import spectral_derivs
 
@@ -31,10 +31,11 @@ def spectral_derivs_plot(spec_der, contrast=0.1, ax=None, freq_range=None,
 
 def plot_over_spec(data, ax, freq_range=256, **plot_params):
     """
-    Plot the feature over the spectral derivatives plot.
+    Plot the feature over a spectral derivatives plot.
 
     The data are first normalized then rescale to fit the ylim of the axis.
     """
+    # Normalize the data so that they fit in the graph
     ndata = data / (np.max(data) - np.min(data))
     # We plot -ndata because the yaxis is inverted (see `spectral_derivs_plot`)
     # We take for abscisse axis 95% of freq_range

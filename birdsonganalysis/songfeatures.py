@@ -4,12 +4,13 @@ Analyses the features of bird song.
 Analysis of the song are taken from SAT: http://soundanalysispro.com/matlab-sat
 """
 
-import numpy as np
-import libtfr
-from aubio import pitch
-
 import json
 import os
+
+import numpy as np
+from aubio import pitch
+
+import libtfr
 
 EPS = np.finfo(np.double).eps
 dir_path = os.path.dirname(os.path.realpath(__file__))
