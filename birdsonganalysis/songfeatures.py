@@ -226,13 +226,20 @@ def song_amplitude_modulation(song, freq_range=None, ov_params=None):
     return am
 
 
-def all_song_features(song):
+def all_song_features(song, sr, without=None):
     """Return all the song features in a `dict`."""
-    return {'fm': song_frequency_modulation(song),
-            'am': song_amplitude_modulation(song),
-            'amplitude': song_amplitude(song),
-            'entropy': song_wiener_entropy(song),
-            'pitch': song_pitch(song)}
+    out = {'fm': song_frequency_modulation(song),
+           'am': song_amplitude_modulation(song),
+           'amplitude': song_amplitude(song),
+           'entropy': song_wiener_entropy(song),
+           'pitch': song_pitch(song, sr)}
+    if without:
+        if isinstance(without, str):
+            del out[without]
+        else:
+            for elem in without:
+                del out[elem]
+    return out
 
 
 def get_windows(song, fft_step=40, fft_size=800):
