@@ -21,11 +21,10 @@ def identify_sections(similarity):
     This algorithm is written in step 7 of the appendix of Tchernichovski 2000.
     """
     directions = [(1, 0), (0, 1), (1, 1)]
-    len_refsong = similarity.shape[1]
     sections = []
     visited = np.full(similarity.shape, False, dtype=bool)
-    for i, j in zip(*np.where(similarity > 0)):
-        if j > i or visited[i, j]:  # do not visit if j > i because symmetrical
+    for i, j in sorted(zip(*np.where(similarity > 0))):
+        if visited[i, j]:
             continue
         locvisited = np.full(similarity.shape, False, dtype=bool)
         # `locvisited` represents the element of the matrix visited
@@ -71,14 +70,11 @@ def identify_sections(similarity):
                     locvisited[new_coord] = True
                     flood_stack.append((new_coord))
         if end[0] - beg[0] > 4 and end[1] - beg[1] > 4:
-            P = np.sum(np.max(similarity[beg[0]:end[0]+1, beg[1]:end[1]+1],
-                              axis=0)) / len_refsong
-            sections.append({'beg': beg, 'end': end, 'P': P})
+            sections.append({'beg': beg, 'end': end})
         # If it is already part of a section, it is no use to
         # start exploring from this point, so we put locvisited as
         # visited
         visited = visited | locvisited
-    sections.sort(key=lambda x: x['P'], reverse=True)
     return sections
 
 
@@ -133,11 +129,11 @@ def similarity(song, refsong, T=70, threshold=0.01, samplerate=44100):
         np.array([local_dists[fname] for fname in local_dists.keys()]),
         axis=0)
     # avoid boundaries effect
-    maxL2 = np.max(L2)
-    L2[:T//2, :] = maxL2
-    L2[-(T//2):, :] = maxL2
-    L2[:, :T//2] = maxL2
-    L2[:, -(T//2):] = maxL2
+    # maxL2 = np.max(L2)
+    # L2[:T//2, :] = maxL2
+    # L2[-(T//2):, :] = maxL2
+    # L2[:, :T//2] = maxL2
+    # L2[:, -(T//2):] = maxL2
     G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
     #############################
     # Compute G Matrix (step 4) #
@@ -148,45 +144,57 @@ def similarity(song, refsong, T=70, threshold=0.01, samplerate=44100):
             imax = min(G2.shape[0], (i+T//2))
             jmin = max(0, (j-T//2))
             jmax = min(G2.shape[1], (j+T//2))
-            G2[i, j] = np.mean(L2[imin:imax, jmin:jmax])
+            G2[i, j] = np.mean(np.diag(L2[imin:imax, jmin:jmax]))
 
     ####################################################################
     # Compute P value and reject similarity hypothesis (steps 5 and 6) #
     ####################################################################
-    similarity = np.where(p_val_err_global(np.sqrt(G2)) < threshold,
-                          1 - p_val_err_local(np.sqrt(L2)),
+    glob = 1 - p_val_err_global(G2)
+    similarity = np.where(glob > (1 - threshold),
+                          1 - p_val_err_local(L2),
                           0)
     #########################################
     # Identify similarity sections (step 7) #
     #########################################
-    all_sections_found = False
+    len_refsong = similarity.shape[1]
     sections = []
     wsimilarity = np.copy(similarity)
-    while not all_sections_found:
+    while True:
         cur_sections = identify_sections(wsimilarity)
-        if cur_sections:
-            best = cur_sections[0]
-            sections.append(best)
-            wsimilarity[best['beg'][0]:best['end'][0]+1, :] = 0
-            wsimilarity[:, best['beg'][1]:best['end'][1]] = 0
-        else:
-            all_sections_found = True
+        if len(cur_sections) == 0:
+            break  # Exit the loop if there is no more sections
+        for section in cur_sections:
+            beg, end = section['beg'], section['end']
+            section['P'] = (np.sum(np.max(similarity[beg[0]:end[0]+1,
+                                                     beg[1]:end[1]+1], axis=0))
+                            / len_refsong)
+        cur_sections.sort(key=lambda x: x['P'])
+        best = cur_sections.pop()
+        wsimilarity[best['beg'][0]:best['end'][0]+1, :] = 0
+        wsimilarity[:, best['beg'][1]:best['end'][1]+1] = 0
+        sections.append(best)
     out = {'similarity': np.sum([section['P'] for section in sections]),
            'sim_matrix': similarity,
+           'glob_matrix': glob,
            'sections': sections
            }
     return out
 
 
 def p_val_err_local(x):
-    """Give the probability that the local error could be `x` or less."""
-    assert np.all(x >= 0), 'Errors must be positive.'
-    return norm.cdf(x, 6, 1)  # TODO Assumed to be gaussian, not the case
-    # assumed mean error would be 2 MAD, with std 0.5 MAD.
+    """
+    Give the probability that the local error could be `x` or less.
 
+    See the notebook `Distrib` to understand the mean and std used.
+    """
+    assert np.all(x >= 0), 'Errors must be positive.'
+    return norm.cdf(np.log(x + 0.01), 2.5212985606078586, 1.9138147753306101)
 
 def p_val_err_global(x):
-    """Give the probability that the global error could be `x` or less."""
+    """
+    Give the probability that the global error could be `x` or less.
+
+    The fit is done using 4 songs, it is available in the notebook `Distrib`
+    """
     assert np.all(x >= 0), 'Errors must be positive.'
-    return norm.cdf(x, 6, 1)  # TODO Assumed to be gaussian, not the case
-    # assumed mean error would be 2 MAD, with std 1 MAD
+    return norm.cdf(np.log(x + 0.01), 3.6359735324494631, 1.6034598153962765)
