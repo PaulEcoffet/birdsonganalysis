@@ -12,6 +12,8 @@ from aubio import pitch
 
 import libtfr
 
+from .utils import get_windows
+
 EPS = np.finfo(np.double).eps
 dir_path = os.path.dirname(os.path.realpath(__file__))
 params = json.load(open(os.path.join(dir_path, 'params.json')))
@@ -240,36 +242,3 @@ def all_song_features(song, sr, without=None):
             for elem in without:
                 del out[elem]
     return out
-
-
-def get_windows(song, fft_step=40, fft_size=800):
-    r"""
-    Build the windows of the song for analysis.
-
-    The windows are separeted by
-    `fft_step` and are of the size `fft_size`. The windows are centered on the
-    actual fft_step. Therefore, with default parameters, they go
-    song[-400:399] (centered on 0); song[-360:439] (centered on 40); etc.
-    out of range indices (including negative indices) are filled with zeros.
-    For example, the first window will be
-    ```
-    [0 0 0 ... 0 0 0 0.48 0.89 0.21 -0.4]
-     \  400 times  / ^- The first recording of the signal
-    ```
-    and the last window
-    ```
-     [0.54 0.12 -0.25 0 0 0 ... 0 0 0]
-    ```
-    """
-    song = np.array(song, dtype=np.double)
-    song = 2*song / (np.max(song) - np.min(song))
-    size = len(song)
-    padsize = fft_size
-    song = np.concatenate((np.zeros(padsize), song, np.zeros(padsize)))
-    wave_smp = range(fft_step//2, size, fft_step)
-    nb_windows = len(wave_smp)
-    windows = np.zeros((nb_windows, fft_size))
-    for i, smp in enumerate(wave_smp):
-        begin = smp - fft_size//2 + padsize
-        windows[i, :] = song[begin:begin + fft_size]
-    return windows

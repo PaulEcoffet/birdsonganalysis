@@ -1,0 +1,92 @@
+"""Utility functions for birdsonganalysis."""
+
+import numpy as np
+
+
+# TODO med and mad should not be hard coded
+med = {
+    'am': -0.0017108904797843044,
+    'amplitude': 78.221571582172999,
+    'entropy': -3.3571450529041909,
+    'fm': 0.73617178714745912,
+    'pitch': 3180.8824462890625
+}
+mad = {
+    'am': 0.76025334172279657,
+    'amplitude': 7.8517415174917247,
+    'entropy': 0.94736721708412031,
+    'fm': 0.37789847802670962,
+    'pitch': 824.90185546875
+}
+
+
+def get_windows(song, fft_step=40, fft_size=800):
+    r"""
+    Build the windows of the song for analysis.
+
+    The windows are separeted by
+    `fft_step` and are of the size `fft_size`. The windows are centered on the
+    actual fft_step. Therefore, with default parameters, they go
+    song[-400:399] (centered on 0); song[-360:439] (centered on 40); etc.
+    out of range indices (including negative indices) are filled with zeros.
+    For example, the first window will be
+    ```
+    [0 0 0 ... 0 0 0 0.48 0.89 0.21 -0.4]
+     \  400 times  / ^- The first recording of the signal
+    ```
+    and the last window
+    ```
+     [0.54 0.12 -0.25 0 0 0 ... 0 0 0]
+    ```
+    """
+    song = np.array(song, dtype=np.double)
+    song = 2*song / (np.max(song) - np.min(song))
+    size = len(song)
+    padsize = fft_size
+    song = np.concatenate((np.zeros(padsize), song, np.zeros(padsize)))
+    wave_smp = range(fft_step//2, size, fft_step)
+    nb_windows = len(wave_smp)
+    windows = np.zeros((nb_windows, fft_size))
+    for i, smp in enumerate(wave_smp):
+        begin = smp - fft_size//2 + padsize
+        windows[i, :] = song[begin:begin + fft_size]
+    return windows
+
+
+def distbroad(X, Y):
+    """
+    Compute the squared dist between two features vector element by element.
+
+    It computes the matrix:
+    ```
+    (X[0] - Y[0])**2 ; (X[0] - Y[1])**2 ; ... ; (X[0] - Y[m])**2
+    (X[1] - Y[0])**2 ; (X[1] - Y[1])**2 ; ... ; (X[1] - Y[m])**2
+    ...
+    (X[n] - Y[0])**2 ; (X[n] - Y[1])**2 ; ... ; (X[n] - Y[m])**2
+    """
+    return (X[:, np.newaxis] - Y)**2
+
+
+def normalize_features(song_features):
+    """
+    Normalize the features of a song.
+
+    It normalizes using the median and the MAD.
+    """
+    adj_song_features = dict()
+    for fname in song_features:
+        adj_song_features[fname] = ((song_features[fname] - med[fname])
+                                    / mad[fname])
+        assert not np.any(np.isnan(adj_song_features[fname])), \
+            'nan in {}'.format(fname)
+    return adj_song_features
+
+
+def calc_dist_features(feats1, feats2, feat_names=None):
+    """Compute the distance between two dict of features."""
+    if feat_names is None:
+        feat_names = feats1.keys()
+    out = dict()
+    for fname in feat_names:
+        out[fname] = distbroad(feats1[fname], feats2[fname])
+    return out

@@ -7,67 +7,11 @@
 # ecoffet.paul@gmail.com                                        #
 #                                                               #
 #################################################################
-
 import numpy as np
-import os
 from scipy.stats import norm
 
-from .songfeatures import all_song_features, get_windows
-
-
-# TODO med and mad should not be hard coded
-med = {
-    'pitch': 688,
-    'fm': 0.64,
-    'am': 0,
-    'entropy': -1.8
-}
-
-mad = {
-    'pitch': 200,
-    'fm': 0.34,
-    'am': 2.1,
-    'entropy': 0.94
-}
-
-
-def distbroad(X, Y):
-    """
-    Compute the dist between two features vector element by element.
-
-    It computes the matrix:
-    ```
-    (X[0] - Y[0])**2 ; (X[0] - Y[1])**2 ; ... ; (X[0] - Y[m])**2
-    (X[1] - Y[0])**2 ; (X[1] - Y[1])**2 ; ... ; (X[1] - Y[m])**2
-    ...
-    (X[n] - Y[0])**2 ; (X[n] - Y[1])**2 ; ... ; (X[n] - Y[m])**2
-    """
-    return (X[:, np.newaxis] - Y)**2
-
-
-def normalize_features(song_features):
-    """
-    Normalize the features of a song.
-
-    It normalizes using the median and the MAD.
-    """
-    adj_song_features = dict()
-    for fname in song_features:
-        adj_song_features[fname] = ((song_features[fname] - med[fname])
-                                    / mad[fname])
-        assert not np.any(np.isnan(adj_song_features[fname])), \
-            'nan in {}'.format(fname)
-    return adj_song_features
-
-
-def calc_dist_features(feats1, feats2, feat_names=None):
-    """Compute the distance between two dict of features."""
-    if feat_names is None:
-        feat_names = feats1.keys()
-    out = dict()
-    for fname in feat_names:
-        out[fname] = distbroad(feats1[fname], feats2[fname])
-    return out
+from .songfeatures import all_song_features
+from .utils import calc_dist_features, normalize_features, get_windows
 
 
 def identify_sections(similarity):
