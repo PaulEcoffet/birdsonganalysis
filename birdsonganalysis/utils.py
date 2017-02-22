@@ -3,21 +3,28 @@
 import numpy as np
 
 
-# TODO med and mad should not be hard coded
+# TODO med and mad should be easily changeable
 med = {
-    'am': -0.0017108904797843044,
-    'amplitude': 78.221571582172999,
-    'entropy': -3.3571450529041909,
-    'fm': 0.73617178714745912,
-    'pitch': 3180.8824462890625
-}
+    'am': -0.0056657042753024663,
+    'amplitude': 81.37709923817728,
+    'entropy': -4.2631974848992744,
+    'fm': 0.83123335339288407,
+    'goodness': 0.11410073023575194,
+    'pitch': 3017.700439453125}
 mad = {
-    'am': 0.76025334172279657,
-    'amplitude': 7.8517415174917247,
-    'entropy': 0.94736721708412031,
-    'fm': 0.37789847802670962,
-    'pitch': 824.90185546875
-}
+    'am': 2.2208938951012631,
+    'amplitude': 6.9446687385734052,
+    'entropy': 0.8973141824407338,
+    'fm': 0.356186590384728,
+    'goodness': 0.028523974833639901,
+    'pitch': 570.063720703125}
+
+
+def set_med_mad(med_, mad_):
+    """Set the new values of med and mad for features."""
+    global med, mad
+    med.update(med_)
+    mad.update(mad_)
 
 
 def get_windows(song, fft_step=40, fft_size=800):
@@ -90,3 +97,10 @@ def calc_dist_features(feats1, feats2, feat_names=None):
     for fname in feat_names:
         out[fname] = distbroad(feats1[fname], feats2[fname])
     return out
+
+
+def cepstrum(signal, n=None):
+    """Compute the real cepstrum of a signal."""
+    spectrum = np.fft.fft(signal, n=n)
+    ceps = np.fft.ifft(np.log(np.abs(spectrum))).real
+    return ceps

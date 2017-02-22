@@ -2,6 +2,8 @@
 
 import numpy as np
 import seaborn as sns
+import matplotlib.patches as p
+import matplotlib.pyplot as plt
 
 from .songfeatures import spectral_derivs
 
@@ -43,3 +45,28 @@ def plot_over_spec(data, ax, freq_range=256, **plot_params):
     ax.plot(95/100 * freq_range - 75/100 * freq_range
             * (ndata - np.min(ndata)), **plot_params)
     return ax
+
+
+def similarity_plot(sim, song, refsong):
+    """Do a similarity plot with the result of `bsa.similarity`."""
+    fig, ax = plt.subplots(2, 2, figsize=(13, 13),
+                           gridspec_kw={'width_ratios': [1, 4],
+                                        'height_ratios': [1, 4]})
+    ax[0, 0].axis('off')
+    sds = spectral_derivs(song)
+    sdr = spectral_derivs(refsong)
+    ax[0, 1] = spectral_derivs_plot(sds, 0.05, ax[0, 1])
+    ax[0, 1].set_title('Song')
+    ax[1, 0] = spectral_derivs_plot(np.flip(sdr.T, 1), 0.05,
+                                    ax[1, 0])
+    ax[1, 0].set_title('Reference Song')
+    ax[1, 1] = sns.heatmap(sim['glob_matrix'], ax=ax[1, 1], cbar=False,
+                           vmin=0, vmax=1)
+    for section in sim['sections']:
+        xy = (section['beg'][0],
+              sim['glob_matrix'].shape[1] - section['end'][1])
+        width = section['end'][0] - section['beg'][0]
+        height = section['end'][1] - section['beg'][1]
+        ax[1, 1].add_patch(p.Rectangle(xy, width, height, fill=False,
+                                       edgecolor='y', linewidth=3))
+    return fig

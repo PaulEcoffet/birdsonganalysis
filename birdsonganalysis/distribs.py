@@ -9,15 +9,26 @@ Beware, this is a very computationally expensive process.
 
 import numpy as np
 import itertools as it
+import time
+import datetime
 
 from birdsonganalysis.utils import get_windows, normalize_features, \
                                    calc_dist_features
-from birdsonganalysis.songfeatures import all_song_features
+from birdsonganalysis.songfeatures import all_song_features, song_amplitude
 
-def get_distribs(songs, samplerate=44100, T=70):
-    allG = np.array([0], dtype=float)
-    allL = np.array([0], dtype=float)
-    for song, refsong in it.combinations(songs, 2):
+
+def get_distribs(songs, samplerate=44100, T=70, verbose=True):
+    allG = np.array([], dtype=float)
+    allL = np.array([], dtype=float)
+    total = len(list(it.combinations(songs, 2)))
+    start = time.time()
+    for i, (song, refsong) in enumerate(it.combinations(songs, 2)):
+        print("{}/{}".format(i+1, total))
+        if i >= 1:
+            elapsed = time.time() - start
+            print('elapsed: {}, Total: {}'.format(
+                datetime.timedelta(seconds=elapsed),
+                datetime.timedelta(seconds=(elapsed / i * total))))
         song_win = get_windows(song)
         refsong_win = get_windows(refsong)
         song_features = all_song_features(song, samplerate,
@@ -35,12 +46,6 @@ def get_distribs(songs, samplerate=44100, T=70):
         L2 = np.mean(
             np.array([local_dists[fname] for fname in local_dists.keys()]),
             axis=0)
-        # avoid boundaries effect
-        # maxL2 = np.max(L2)
-        # L2[:T//2, :] = maxL2
-        # L2[-(T//2):, :] = maxL2
-        # L2[:, :T//2] = maxL2
-        # L2[:, -(T//2):] = maxL2
         G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
         #############################
         # Compute G Matrix (step 4) #
@@ -51,7 +56,18 @@ def get_distribs(songs, samplerate=44100, T=70):
                 imax = min(G2.shape[0], (i+T//2))
                 jmin = max(0, (j-T//2))
                 jmax = min(G2.shape[1], (j+T//2))
-                G2[i, j] = np.mean(L2[imin:imax, jmin:jmax])
+                if not np.all(np.isnan(np.diag(L2[imin:imax, jmin:jmax]))):
+                    G2[i, j] = np.nanmean(np.diag(L2[imin:imax, jmin:jmax]))
+                else:
+                    G2[i, j] = np.nan
+        amp_song = song_amplitude(song)
+        threshold = np.percentile(amp_song, 15)
+        L2[amp_song < threshold, :] = np.nan
+        G2[amp_song < threshold, :] = np.nan
+        amp_song = song_amplitude(refsong)
+        threshold = np.percentile(amp_song, 15)
+        L2[:, amp_song < threshold] = np.nan
+        G2[:, amp_song < threshold] = np.nan
         allG = np.concatenate((allG, G2.flatten()))
         allL = np.concatenate((allL, L2.flatten()))
-    return allG, allL
+    return allG[~ np.isnan(allG)], allL[~ np.isnan(allL)]

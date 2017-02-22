@@ -12,7 +12,7 @@ from aubio import pitch
 
 import libtfr
 
-from .utils import get_windows
+from .utils import get_windows, cepstrum
 
 EPS = np.finfo(np.double).eps
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -139,6 +139,18 @@ def amplitude(power, freq_range=None):
         return 0
 
 
+def goodness(signal, freq_range=None):
+    """Compute the goodness of pitch of a signal."""
+    D = libtfr.dpss(len(signal), 1.5, 2)
+    signal = signal * D[0][0, :]
+    if freq_range is None:
+        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+    if np.all(signal == 0):
+        return 0
+    else:
+        return np.max(cepstrum(signal)[25:freq_range])
+
+
 def spectral_derivs(song, freq_range=None, ov_params=None):
     """
     Return the spectral derivatives of a song.
@@ -228,13 +240,25 @@ def song_amplitude_modulation(song, freq_range=None, ov_params=None):
     return am
 
 
+def song_goodness(song, freq_range=None):
+    """Return an array of goodness of pitch for the whole song."""
+    if freq_range is None:
+        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+    windows = get_windows(song)
+    good = np.zeros(windows.shape[0])
+    for i, window in enumerate(windows):
+        good[i] = goodness(window, freq_range)
+    return good
+
+
 def all_song_features(song, sr, without=None):
     """Return all the song features in a `dict`."""
     out = {'fm': song_frequency_modulation(song),
            'am': song_amplitude_modulation(song),
            'amplitude': song_amplitude(song),
            'entropy': song_wiener_entropy(song),
-           'pitch': song_pitch(song, sr)}
+           'pitch': song_pitch(song, sr),
+           'goodness': song_goodness(song)}
     if without:
         if isinstance(without, str):
             del out[without]
