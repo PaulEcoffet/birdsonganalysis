@@ -203,8 +203,10 @@ def song_amplitude(song, freq_range=None, ov_params=None):
     return amp
 
 
-def song_pitch(song, sr, threshold=0.8, freq_range=None, ov_params=None):
+def song_pitch(song, sr, threshold=None, freq_range=None, ov_params=None):
     """Return an array of pitch values for the whole song."""
+    if threshold is None:
+        threshold = 0.8
     windows = get_windows(song)
     nb_windows = windows.shape[0]
     win_s = windows.shape[1]
@@ -214,6 +216,7 @@ def song_pitch(song, sr, threshold=0.8, freq_range=None, ov_params=None):
     pitches = np.zeros(nb_windows)
     for i, window in enumerate(windows):
         pitches[i] = pitch_o(window.astype(np.float32))[0]
+    pitches[pitches > sr/2] = 0  # Avoid absurd results
     return pitches
 
 
@@ -251,13 +254,13 @@ def song_goodness(song, freq_range=None):
     return good
 
 
-def all_song_features(song, sr, without=None):
+def all_song_features(song, sr, without=None, pitch_threshold=None):
     """Return all the song features in a `dict`."""
     out = {'fm': song_frequency_modulation(song),
            'am': song_amplitude_modulation(song),
            'amplitude': song_amplitude(song),
            'entropy': song_wiener_entropy(song),
-           'pitch': song_pitch(song, sr),
+           'pitch': song_pitch(song, sr, pitch_threshold),
            'goodness': song_goodness(song)}
     if without:
         if isinstance(without, str):

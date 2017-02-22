@@ -38,12 +38,12 @@ def plot_over_spec(data, ax, freq_range=256, **plot_params):
     The data are first normalized then rescale to fit the ylim of the axis.
     """
     # Normalize the data so that they fit in the graph
-    ndata = data / (np.max(data) - np.min(data))
+    ndata = data / (np.nanmax(data) - np.nanmin(data))
     # We plot -ndata because the yaxis is inverted (see `spectral_derivs_plot`)
     # We take for abscisse axis 95% of freq_range
     # We rescale the data so that they take 75% of the graph
     ax.plot(95/100 * freq_range - 75/100 * freq_range
-            * (ndata - np.min(ndata)), **plot_params)
+            * (ndata - np.nanmin(ndata)), **plot_params)
     return ax
 
 
