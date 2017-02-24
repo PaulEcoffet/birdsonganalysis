@@ -6,9 +6,10 @@ Analysis of the song are taken from SAT: http://soundanalysispro.com/matlab-sat
 
 import json
 import os
+from collections import defaultdict
 
 import numpy as np
-from aubio import pitch
+from aubio import pitch as aubio_pitch
 
 import libtfr
 
@@ -119,7 +120,6 @@ def frequency_modulation(window, freq_range=None):
     fd = freq_der(Z, freq_range)
     return np.arctan(np.max(td) / (np.max(fd)+EPS))
 
-
 def amplitude(power, freq_range=None):
     """
     Compute the amplitude of a signal.
@@ -210,13 +210,13 @@ def song_pitch(song, sr, threshold=None, freq_range=None, ov_params=None):
     windows = get_windows(song)
     nb_windows = windows.shape[0]
     win_s = windows.shape[1]
-    pitch_o = pitch("yin", 2048, win_s, sr)
+    pitch_o = aubio_pitch("yin", 2048, win_s, sr)
     pitch_o.set_unit("freq")
     pitch_o.set_tolerance(threshold)
     pitches = np.zeros(nb_windows)
     for i, window in enumerate(windows):
-        pitches[i] = pitch_o(window.astype(np.float32))[0]
-    pitches[pitches > sr/2] = 0  # Avoid absurd results
+        pitches[i] = pitch_o(window.astype(np.float32))
+    pitches[pitches > sr / 2] = 0
     return pitches
 
 
@@ -254,18 +254,21 @@ def song_goodness(song, freq_range=None):
     return good
 
 
-def all_song_features(song, sr, without=None, pitch_threshold=None):
+def all_song_features(song, sr, withonly=None, without=None,
+                      pitch_threshold=None):
     """Return all the song features in a `dict`."""
-    out = {'fm': song_frequency_modulation(song),
-           'am': song_amplitude_modulation(song),
-           'amplitude': song_amplitude(song),
-           'entropy': song_wiener_entropy(song),
-           'pitch': song_pitch(song, sr, pitch_threshold),
-           'goodness': song_goodness(song)}
-    if without:
-        if isinstance(without, str):
-            del out[without]
-        else:
-            for elem in without:
-                del out[elem]
+    windows = get_windows(song)
+    out = defaultdict(lambda: np.zeros(windows.shape[0], dtype=float))
+    if withonly is not None:
+        if isinstance(withonly, str):
+            pass
+    for i, window in enumerate(windows):
+        Z = get_mtfft(window)
+        P = get_power(window)
+        out['goodness'][i] = goodness(window)
+        out['am'][i] = amplitude_modulation(Z)
+        out['fm'][i] = frequency_modulation(Z)
+        out['amplitude'][i] = amplitude(P)
+        out['entropy'][i] = wiener_entropy(P)
+    out['pitch'] = song_pitch(song, sr, pitch_threshold)
     return out
