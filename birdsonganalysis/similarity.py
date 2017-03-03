@@ -144,10 +144,11 @@ def similarity(song, refsong, threshold=0.01, ignore_silence=True,
     # L2[-(T//2):, :] = maxL2
     # L2[:, :T//2] = maxL2
     # L2[:, -(T//2):] = maxL2
-    G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
+
     #############################
     # Compute G Matrix (step 4) #
     #############################
+    G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
     for i in range(song_win.shape[0]):
         for j in range(refsong_win.shape[0]):
             imin = max(0, (i-T//2))
@@ -155,7 +156,6 @@ def similarity(song, refsong, threshold=0.01, ignore_silence=True,
             jmin = max(0, (j-T//2))
             jmax = min(G2.shape[1], (j+T//2))
             G2[i, j] = np.mean(np.diag(L2[imin:imax, jmin:jmax]))
-
     ####################################################################
     # Compute P value and reject similarity hypothesis (steps 5 and 6) #
     ####################################################################

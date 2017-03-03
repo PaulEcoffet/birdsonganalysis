@@ -120,6 +120,7 @@ def frequency_modulation(window, freq_range=None):
     fd = freq_der(Z, freq_range)
     return np.arctan(np.max(td) / (np.max(fd)+EPS))
 
+
 def amplitude(power, freq_range=None):
     """
     Compute the amplitude of a signal.
@@ -139,10 +140,11 @@ def amplitude(power, freq_range=None):
         return 0
 
 
-def goodness(signal, freq_range=None):
+def goodness(signal, freq_range=None, D=None):
     """Compute the goodness of pitch of a signal."""
-    D = libtfr.dpss(len(signal), 1.5, 2)
-    signal = signal * D[0][0, :]
+    if D is None:
+        D = libtfr.dpss(len(signal), 1.5, 1)[0]
+    signal = signal * D[0, :]
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
     if np.all(signal == 0):
@@ -151,7 +153,7 @@ def goodness(signal, freq_range=None):
         return np.max(cepstrum(signal)[25:freq_range])
 
 
-def spectral_derivs(song, freq_range=None, ov_params=None):
+def spectral_derivs(song, freq_range=None, fft_step=None, fft_size=None):
     """
     Return the spectral derivatives of a song.
 
@@ -160,13 +162,14 @@ def spectral_derivs(song, freq_range=None, ov_params=None):
     """
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     td = np.zeros((nb_windows, freq_range))
     fd = np.zeros((nb_windows, freq_range))
     fm = np.zeros(nb_windows)
+    D = libtfr.mfft_dpss(windows.shape[1], 1.5, 2, windows.shape[1])
     for i, window in enumerate(windows):
-        Z = get_mtfft(window)
+        Z = D.mtfft(window)
         td[i, :] = time_der(Z, freq_range)
         fd[i, :] = freq_der(Z, freq_range)
         fm[i] = np.arctan(np.max(td[i, :]) / (np.max(fd[i, :]) + EPS))  # TODO vectorize
@@ -175,11 +178,12 @@ def spectral_derivs(song, freq_range=None, ov_params=None):
     return cfm[:, np.newaxis] * td + sfm[:, np.newaxis] * fd
 
 
-def song_frequency_modulation(song, freq_range=None, ov_params=None):
+def song_frequency_modulation(song, freq_range=None, fft_step=None,
+                              fft_size=None):
     """Return the whole song frequency modulations array."""
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     td = np.zeros((nb_windows, freq_range))
     fd = np.zeros((nb_windows, freq_range))
@@ -192,22 +196,24 @@ def song_frequency_modulation(song, freq_range=None, ov_params=None):
     return fm
 
 
-def song_amplitude(song, freq_range=None, ov_params=None):
+def song_amplitude(song, freq_range=None, fft_step=None, fft_size=None):
     """Return an array of amplitude values for the whole song."""
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     amp = np.zeros(nb_windows)
+    D = libtfr.mfft_dpss(windows.shape[1], 1.5, 2, windows.shape[1])
     for i, window in enumerate(windows):
-        P = get_power(window)
+        P = D.mtpsd(window)
         amp[i] = amplitude(P, freq_range)
     return amp
 
 
-def song_pitch(song, sr, threshold=None, freq_range=None, ov_params=None):
+def song_pitch(song, sr, threshold=None, freq_range=None, fft_step=None,
+               fft_size=None):
     """Return an array of pitch values for the whole song."""
     if threshold is None:
         threshold = 0.8
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     win_s = windows.shape[1]
     pitch_o = aubio_pitch("yin", 2048, win_s, sr)
@@ -220,11 +226,11 @@ def song_pitch(song, sr, threshold=None, freq_range=None, ov_params=None):
     return pitches
 
 
-def song_wiener_entropy(song, freq_range=None, ov_params=None):
+def song_wiener_entropy(song, freq_range=None, fft_step=None, fft_size=None):
     """Return an array of wiener entropy values for the whole song."""
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     wiener = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):
         P = get_power(window)
@@ -232,22 +238,23 @@ def song_wiener_entropy(song, freq_range=None, ov_params=None):
     return wiener
 
 
-def song_amplitude_modulation(song, freq_range=None, ov_params=None):
+def song_amplitude_modulation(song, freq_range=None, fft_step=None,
+                              fft_size=None):
     """Return an array of amplitude modulation for the whole song."""
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     am = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):
         am[i] = amplitude_modulation(window)
     return am
 
 
-def song_goodness(song, freq_range=None):
+def song_goodness(song, freq_range=None, fft_step=None, fft_size=None):
     """Return an array of goodness of pitch for the whole song."""
     if freq_range is None:
         freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     good = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):
         good[i] = goodness(window, freq_range)
@@ -255,17 +262,19 @@ def song_goodness(song, freq_range=None):
 
 
 def all_song_features(song, sr, withonly=None, without=None,
-                      pitch_threshold=None):
+                      pitch_threshold=None,
+                      fft_step=None, fft_size=None):
     """Return all the song features in a `dict`."""
-    windows = get_windows(song)
+    windows = get_windows(song, fft_step, fft_size)
     out = defaultdict(lambda: np.zeros(windows.shape[0], dtype=float))
     if withonly is not None:
         if isinstance(withonly, str):
             pass
+    D = libtfr.mfft_dpss(windows.shape[1], 1.5, 2, windows.shape[1])
     for i, window in enumerate(windows):
-        Z = get_mtfft(window)
-        P = get_power(window)
-        out['goodness'][i] = goodness(window)
+        Z = D.mtfft(window)
+        P = D.mtpsd(window)
+        out['goodness'][i] = goodness(window, D=D.tapers)
         out['am'][i] = amplitude_modulation(Z)
         out['fm'][i] = frequency_modulation(Z)
         out['amplitude'][i] = amplitude(P)

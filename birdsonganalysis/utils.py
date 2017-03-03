@@ -27,7 +27,7 @@ def set_med_mad(med_, mad_):
     mad.update(mad_)
 
 
-def get_windows(song, fft_step=40, fft_size=800):
+def get_windows(song, fft_step=None, fft_size=None):
     r"""
     Build the windows of the song for analysis.
 
@@ -46,6 +46,10 @@ def get_windows(song, fft_step=40, fft_size=800):
      [0.54 0.12 -0.25 0 0 0 ... 0 0 0]
     ```
     """
+    if fft_step is None:
+        fft_step = 40
+    if fft_size is None:
+        fft_size = 800
     song = np.array(song, dtype=np.double)
     song = 2*song / (np.max(song) - np.min(song))
     size = len(song)
@@ -84,8 +88,8 @@ def normalize_features(song_features):
     for fname in song_features:
         adj_song_features[fname] = ((song_features[fname] - med[fname])
                                     / mad[fname])
-        assert not np.any(np.isnan(adj_song_features[fname])), \
-            'nan in {}'.format(fname)
+        adj_song_features[fname][np.isnan(adj_song_features[fname])] = 0
+
     return adj_song_features
 
 
