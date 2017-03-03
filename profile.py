@@ -18,8 +18,7 @@ if False:
     s = pstats.Stats("spec_derivs.prof")
     s.strip_dirs().sort_stats("time").print_stats()
 
-print(similarity)
 profile.runctx("similarity(repr[:20000], song[:20000])", globals(), locals(), 'sim.prof')
-print('done')
+
 s = pstats.Stats("sim.prof")
 s.strip_dirs().sort_stats("time").print_stats()

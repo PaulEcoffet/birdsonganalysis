@@ -78,6 +78,40 @@ def identify_sections(similarity):
     return sections
 
 
+def _compute_G2(song_win, refsong_win, L2, T):
+    fast = True
+    if fast:
+        G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
+        sumG2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))
+        for i in range(song_win.shape[0]):
+            for j in range(refsong_win.shape[0]):
+                if i <= T or j <= T:
+                    imin = max(i - T//2, 0)
+                    jmin = max(j - T//2, 0)
+                    G2[i, j] = np.mean(np.diag(L2[imin:i+T//2, jmin:j+T//2]))
+                    sumG2[i, j] = np.sum(np.diag(L2[imin:i+T//2, jmin:j+T//2]))
+                elif i < song_win.shape[0] - T*2 \
+                        and j < refsong_win.shape[0] - T*2:
+                    sumG2[i, j] = (sumG2[i - 1, j - 1]
+                                   - L2[(i - 1) - T//2, (j - 1) - T//2]
+                                   + L2[i + (T//2)-1, j + (T//2)-1])
+                    G2[i, j] = sumG2[i, j] / T
+                else:
+                    imax = min(i + T//2, song_win.shape[0])
+                    jmax = min(j + T//2, refsong_win.shape[0])
+                    G2[i, j] = np.mean(np.diag(L2[i - T//2:imax, j - T//2:jmax]))
+    else:
+        G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))
+        for i in range(song_win.shape[0]):
+            for j in range(refsong_win.shape[0]):
+                imin = max(0, (i-T//2))
+                imax = min(G2.shape[0], (i+T//2))
+                jmin = max(0, (j-T//2))
+                jmax = min(G2.shape[1], (j+T//2))
+                G2[i, j] = np.mean(np.diag(L2[imin:imax, jmin:jmax]))
+    return G2
+
+
 def similarity(song, refsong, threshold=0.01, ignore_silence=True,
                T=70, samplerate=44100, silence_song_th=None,
                silence_ref_th=None):
@@ -148,14 +182,9 @@ def similarity(song, refsong, threshold=0.01, ignore_silence=True,
     #############################
     # Compute G Matrix (step 4) #
     #############################
-    G2 = np.zeros((song_win.shape[0], refsong_win.shape[0]))  # G2 = G²
-    for i in range(song_win.shape[0]):
-        for j in range(refsong_win.shape[0]):
-            imin = max(0, (i-T//2))
-            imax = min(G2.shape[0], (i+T//2))
-            jmin = max(0, (j-T//2))
-            jmax = min(G2.shape[1], (j+T//2))
-            G2[i, j] = np.mean(np.diag(L2[imin:imax, jmin:jmax]))
+
+    G2 = _compute_G2(song_win, refsong_win, L2, T)
+
     ####################################################################
     # Compute P value and reject similarity hypothesis (steps 5 and 6) #
     ####################################################################
