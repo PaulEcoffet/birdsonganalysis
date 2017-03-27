@@ -49,7 +49,7 @@ def get_windows(song, fft_step=None, fft_size=None):
     if fft_step is None:
         fft_step = 40
     if fft_size is None:
-        fft_size = 800
+        fft_size = 1024
     song = np.array(song, dtype=np.double)
     song = 2*song / (np.max(song) - np.min(song))
     size = len(song)

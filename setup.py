@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 extra = {}
 
 setup(name='birdsonganalysis',
-      version='0.0.2',
-      packages=[],
+      version='1.0.0',
+      packages=['birdsonganalysis'],
 
-      install_requires=['numpy', 'scipy', 'libtfr'],
+      install_requires=['numpy', 'scipy', 'libtfr', 'matplotlib', 'seaborn'],
 
       setup_requires=['setuptools_git >= 0.3', 'pkgconfig'],
 

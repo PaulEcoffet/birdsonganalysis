@@ -261,23 +261,26 @@ def song_goodness(song, freq_range=None, fft_step=None, fft_size=None):
     return good
 
 
-def all_song_features(song, sr, withonly=None, without=None,
-                      pitch_threshold=None,
+def all_song_features(song, sr, pitch_method=None,
+                      pitch_threshold=None, freq_range=None,
                       fft_step=None, fft_size=None):
     """Return all the song features in a `dict`."""
     windows = get_windows(song, fft_step, fft_size)
     out = defaultdict(lambda: np.zeros(windows.shape[0], dtype=float))
-    if withonly is not None:
-        if isinstance(withonly, str):
-            pass
     D = libtfr.mfft_dpss(windows.shape[1], 1.5, 2, windows.shape[1])
     for i, window in enumerate(windows):
         Z = D.mtfft(window)
         P = D.mtpsd(window)
-        out['goodness'][i] = goodness(window, D=D.tapers)
-        out['am'][i] = amplitude_modulation(Z)
-        out['fm'][i] = frequency_modulation(Z)
-        out['amplitude'][i] = amplitude(P)
-        out['entropy'][i] = wiener_entropy(P)
-    out['pitch'] = song_pitch(song, sr, pitch_threshold)
+        out['goodness'][i] = goodness(window, freq_range, D=D.tapers)
+        out['am'][i] = amplitude_modulation(Z, freq_range)
+        out['fm'][i] = frequency_modulation(Z, freq_range)
+        out['amplitude'][i] = amplitude(P, freq_range)
+        out['entropy'][i] = wiener_entropy(P, freq_range)
+        if pitch_method == 'fft':
+            out['pitch'][i] = np.argmax(P[0:freq_range])/len(P) * sr
+    if pitch_method != 'fft':
+        out['pitch'] = song_pitch(song, sr, pitch_threshold)
+    else:
+        silent_th = np.percentile(out['amplitude'], 20)
+        out['pitch'][out['amplitude'] < silent_th] = 0
     return out
