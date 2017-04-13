@@ -17,8 +17,6 @@ from .utils import get_windows, cepstrum
 
 EPS = np.finfo(np.double).eps
 dir_path = os.path.dirname(os.path.realpath(__file__))
-params = json.load(open(os.path.join(dir_path, 'params.json')))
-
 
 def get_power(signal):
     """
@@ -72,7 +70,7 @@ def wiener_entropy(power, freq_range=None):
     # Taken from SAT
     # Ignore low frequency power, starting only at the 10th element
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     if np.all(power == 0):
         return 0
     sumlog = np.sum(np.log(power[9:freq_range]))
@@ -91,7 +89,7 @@ def amplitude_modulation(window, freq_range=None):
     `song_amplitude_modulation`.
     """
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     if window.ndim == 1:
         Z = get_mtfft(window)
     else:
@@ -111,7 +109,7 @@ def frequency_modulation(window, freq_range=None):
     `song_frequency_modulation`.
     """
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     if window.ndim == 1:
         Z = get_mtfft(window)
     else:
@@ -132,7 +130,7 @@ def amplitude(power, freq_range=None):
     `song_amplitude`.
     """
     if freq_range is None:
-        freq_range = int(params['FFT']*params['Frequency_range']/2)
+        freq_range = 256
     logsum = np.sum(power[9:freq_range])
     if logsum > 0:
         return 10*(np.log10(logsum)+7)
@@ -146,7 +144,7 @@ def goodness(signal, freq_range=None, D=None):
         D = libtfr.dpss(len(signal), 1.5, 1)[0]
     signal = signal * D[0, :]
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     if np.all(signal == 0):
         return 0
     else:
@@ -161,7 +159,7 @@ def spectral_derivs(song, freq_range=None, fft_step=None, fft_size=None):
     the song. To get this plot, use `spectral_derivs_plot`.
     """
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     td = np.zeros((nb_windows, freq_range))
@@ -182,7 +180,7 @@ def song_frequency_modulation(song, freq_range=None, fft_step=None,
                               fft_size=None):
     """Return the whole song frequency modulations array."""
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     windows = get_windows(song, fft_step, fft_size)
     nb_windows = windows.shape[0]
     td = np.zeros((nb_windows, freq_range))
@@ -229,7 +227,7 @@ def song_pitch(song, sr, threshold=None, freq_range=None, fft_step=None,
 def song_wiener_entropy(song, freq_range=None, fft_step=None, fft_size=None):
     """Return an array of wiener entropy values for the whole song."""
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     windows = get_windows(song, fft_step, fft_size)
     wiener = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):
@@ -242,7 +240,7 @@ def song_amplitude_modulation(song, freq_range=None, fft_step=None,
                               fft_size=None):
     """Return an array of amplitude modulation for the whole song."""
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     windows = get_windows(song, fft_step, fft_size)
     am = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):
@@ -253,7 +251,7 @@ def song_amplitude_modulation(song, freq_range=None, fft_step=None,
 def song_goodness(song, freq_range=None, fft_step=None, fft_size=None):
     """Return an array of goodness of pitch for the whole song."""
     if freq_range is None:
-        freq_range = int(params['FFT'] * params['Frequency_range'] / 2)
+        freq_range = 256
     windows = get_windows(song, fft_step, fft_size)
     good = np.zeros(windows.shape[0])
     for i, window in enumerate(windows):

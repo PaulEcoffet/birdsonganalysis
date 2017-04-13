@@ -158,10 +158,10 @@ def similarity(song, refsong, threshold=0.01, ignore_silence=True,
     #########################################################################
     # Compute sound features and scale them (step 2 of Tchernichovski 2000) #
     #########################################################################
-    song_features = all_song_features(song, samplerate,
-                                      without="amplitude")
-    refsong_features = all_song_features(refsong, samplerate,
-                                         without="amplitude")
+    song_features = all_song_features(song, samplerate)
+    del song_features['amplitude']
+    refsong_features = all_song_features(refsong, samplerate)
+    del refsong_features['amplitude']
     adj_song_features = normalize_features(song_features)
     adj_refsong_features = normalize_features(refsong_features)
     #################################
