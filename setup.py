@@ -6,7 +6,7 @@ setup(name='birdsonganalysis',
       version='1.0.0',
       packages=['birdsonganalysis'],
 
-      install_requires=['numpy', 'scipy', 'libtfr', 'matplotlib', 'seaborn'],
+      install_requires=['numpy', 'scipy', 'libtfr', 'matplotlib', 'seaborn', 'aubio'],
 
       setup_requires=['setuptools_git >= 0.3', 'pkgconfig'],
 
